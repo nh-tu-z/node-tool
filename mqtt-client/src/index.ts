@@ -3,6 +3,7 @@ import chalk from 'chalk';
 import mqtt from 'mqtt';
 import { Command } from 'commander';
 import { mqttOptions } from './options';
+import { setupEventHandlers } from './event-handler';
 
 console.log(chalk.green(figlet.textSync("MQTT Client")));
 
@@ -51,26 +52,4 @@ const topic = 'default-mqtt-topic';
 
 const client = mqtt.connect(connectUrl, mqttOptions);
 
-client.on('connect', () => {
-    console.log(`${options.protocol}: Connected`)
-    client.subscribe([topic], () => {
-      console.log(`${options.protocol}: Subscribe to topic '${topic}'`)
-    })
-    client.publish(topic, 'nodejs mqtt test', { qos: 0, retain: false }, (error) => {
-      if (error) {
-        console.error(error)
-      }
-    })
-})
-  
-client.on('reconnect', () => {
-console.log(`Reconnecting(${program.options})`)
-})
-
-client.on('error', (error) => {
-console.log(`Cannot connect(${program.options}):`, error)
-})
-
-client.on('message', (topic, payload) => {
-console.log('Received Message:', topic, payload.toString())
-})
+setupEventHandlers(client);
