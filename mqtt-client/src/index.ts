@@ -27,7 +27,7 @@ const PROTOCOLS = ['mqtt', 'mqtts', 'ws', 'wss']
 
 // default is mqtt, unencrypted tcp connection
 let connectUrl = `mqtt://${host}:${port}`;
-console.log(connectUrl)
+
 if (options.protocol && PROTOCOLS.indexOf(options.protocol) === -1) {
     console.log('protocol must one of mqtt, mqtts, ws, wss.');
 } 
@@ -48,8 +48,7 @@ else if (options.protocol === 'wss') {
     //OPTIONS['ca'] = fs.readFileSync('./broker.emqx.io-ca.crt')
 } 
 
-const topic = 'default-mqtt-topic';
-
+console.log(connectUrl)
 const client = mqtt.connect(connectUrl, mqttOptions);
 
 setupEventHandlers(client);
