@@ -2,7 +2,7 @@ import figlet from 'figlet';
 import chalk from 'chalk';
 import mqtt from 'mqtt';
 import { Command } from 'commander';
-import { mqttOptions } from './options';
+import { mqttOptions } from './const/options';
 import { setupEventHandlers } from './event-handler';
 
 console.log(chalk.green(figlet.textSync("MQTT Client")));

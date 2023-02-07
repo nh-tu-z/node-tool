@@ -1,18 +1,22 @@
 import { MqttClient } from 'mqtt';
 import { connectionMessage } from './payload-builder';
-import { pubOptions, subOptions } from './options';
-
-const connectionGatewayTopic = 'connection-gateway/01';
-const connectionSetupTopic = 'connection-setup/';
+import { pubOptions, subOptions } from './const/options';
+import { root } from './const/topic-pattern';
+import { InitialToken } from "./types";
+// default server
+const baseServerTopic = `${root.server}/1`;
+// topic to send data
+let dataTopic = '';
 
 export const setupEventHandlers = (client: MqttClient): MqttClient => {
     const mqttProtocol = client.options.protocol;
-    const setupTopic = `${connectionSetupTopic}${client.options.clientId}`;
+    const connectionTopic = `${baseServerTopic}/connection`;
+    const baseClientTopic = `${root.client}/${client.options.clientId}`;
     client.on('connect', () => {
-        client.subscribe([setupTopic], subOptions, () => {
-            console.log(`${setupTopic}: Subscribe to topic '${setupTopic}'`)
+        client.subscribe([`${baseClientTopic}/#`], subOptions, () => {
+            console.log(`${mqttProtocol}: Subscribe to topic '${baseClientTopic}/#'`)
         });
-        client.publish(connectionGatewayTopic, 
+        client.publish(connectionTopic, 
                        connectionMessage(client.options.clientId as string), 
                        pubOptions, 
                        (error) => {
@@ -32,9 +36,19 @@ export const setupEventHandlers = (client: MqttClient): MqttClient => {
       
     client.on('message', (topic, payload, packet) => {
         console.log('Received Message:', topic, payload.toString());
-        if (topic === setupTopic)
+        if (topic === baseClientTopic)
         {
-            
+            console.log(payload.toString());
+            let json: InitialToken = JSON.parse(payload.toString());
+            dataTopic = `${baseServerTopic}/${json.token}`;
+            client.publish(dataTopic, 
+                'data payload', 
+                pubOptions, 
+                (error) => {
+                     if (error) {
+                         console.error(error);
+                 }
+                });
         }
     });
     return client;
