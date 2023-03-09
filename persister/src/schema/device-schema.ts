@@ -53,13 +53,10 @@ const GroupModel = model<IGroup>(schemaName.group, groupSchema);
 
 // Device
 const deviceSchema = new Schema<IDevice>({
-  deviceId: { type: Types.ObjectId, required: true},
-  groupId: { type: Types.ObjectId, required: true},
+  groupId: { type: String, required: true},
   deviceName: { type: String, required: true },
   description: { type: String },
-  state: { type: Number, required: true },
-  createdAt: { type: Date, required: true },
-  updatedAt: { type: Date, required: true }
+  state: { type: Number, required: true }
 });
 
 const DeviceModel = model<IDevice>(schemaName.device, deviceSchema);

@@ -1,4 +1,6 @@
 {
-    "name": "tuhngo",
-    "age": 23
+    "groupId": "groupidtest",
+    "deviceName": "devicenametest",
+    "description": "description",
+    "state" : 1
 }

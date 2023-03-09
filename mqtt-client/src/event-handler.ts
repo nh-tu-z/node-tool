@@ -41,14 +41,16 @@ export const setupEventHandlers = (client: MqttClient): MqttClient => {
             console.log(payload.toString());
             let json: InitialToken = JSON.parse(payload.toString());
             dataTopic = `${baseServerTopic}/${json.token}`;
-            client.publish(dataTopic, 
-                'data payload', 
-                pubOptions, 
-                (error) => {
-                     if (error) {
-                         console.error(error);
-                 }
-                });
+            setInterval(function() {
+                client.publish(dataTopic, 
+                    `data payload ${Math.random().toString(16).slice(3)}`, 
+                    pubOptions, 
+                    (error) => {
+                         if (error) {
+                             console.error(error);
+                     }
+                    });
+            }, 5000);
         }
     });
     return client;
