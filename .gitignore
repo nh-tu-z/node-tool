@@ -3,6 +3,13 @@
 # ignore all node modules, dependencies
 node_modules
 
+# vs
+.vs
+bin
+obj
+packages
+
+
 # ignore generated files in specific folder
 **/dst/**
 
