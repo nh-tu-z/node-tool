@@ -64,6 +64,7 @@ namespace Migratie
 
         private static bool ShowHelp()
         {
+            // TODO - apply StringBuilder
             var help = @"Migratie tool arguments:
                 --connectionString: connection string of database that will be migrated
                 --location: migrate location script
