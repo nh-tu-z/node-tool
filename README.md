@@ -4,4 +4,4 @@
 2. [Persister](persister/README.md)
 3. [Migratie](migratie/readme.md)
 4. [Seriallint](seriallint/readme.md)
-5. [combiner](combiner/readme.md)
+5. [combiner](combiner/README.md)
