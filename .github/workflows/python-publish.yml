@@ -9,7 +9,7 @@
 name: CI for combiner tool
 
 on:
-  pull_request:
+  [pull_request, workflow_dispatch]
     branches: 
       - main
 
