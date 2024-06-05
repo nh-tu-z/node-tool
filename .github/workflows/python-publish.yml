@@ -25,5 +25,7 @@ jobs:
           LAST_NAME: Ngo
         run: |
           echo $MY_VAR $FIRST_NAME $LAST_NAME.
+      - name: List
+        run: ls -la
       - name: Check syntax errors
         run: python -m py_compile .\combiner\main.py
