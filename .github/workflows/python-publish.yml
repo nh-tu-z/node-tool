@@ -18,15 +18,7 @@ jobs:
         python-version: ["3.10", "3.12"]
 
     steps:
+      # need to add this checkout in order to use the file in branch 
       - uses: actions/checkout@v3
-      - name: Print a greeting
-        env:
-          MY_VAR: Hi there! My name is
-          FIRST_NAME: Tu
-          LAST_NAME: Ngo
-        run: |
-          echo $MY_VAR $FIRST_NAME $LAST_NAME.
-      - name: List
-        run: ls -la
       - name: Check syntax errors
         run: python -m py_compile ./combiner/main.py
