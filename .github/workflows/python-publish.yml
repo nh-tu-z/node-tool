@@ -28,4 +28,4 @@ jobs:
       - name: List
         run: ls -la
       - name: Check syntax errors
-        run: python -m py_compile .\combiner\main.py
+        run: python -m py_compile ./combiner/main.py
