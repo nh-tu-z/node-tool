@@ -11,7 +11,7 @@ name: CI for combiner tool
 on:
   pull_request:
     branches: 
-      - main
+      - master
   workflow_dispatch:
 
 permissions:
