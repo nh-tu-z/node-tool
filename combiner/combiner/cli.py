@@ -22,13 +22,13 @@ def main():
         description='Combiner - A tool to combine and spread files across directories.',
         prog='combiner'
     )
-   
+    
     parser.add_argument(
         '--version',
         action='version',
         version=f'%(prog)s {__version__}'
     )
-   
+    
     parser.add_argument(
         'mode',
         metavar='mode',
@@ -36,7 +36,7 @@ def main():
         choices=['combine', 'spread', 'encode', 'decode'],
         help="Operation mode: 'combine', 'spread', 'encode', or 'decode'."
     )
-   
+    
     parser.add_argument(
         '-ed', '--executed-directory',
         dest='executed_directory',
@@ -44,7 +44,7 @@ def main():
         default=os.getcwd(),
         help='Input executed directory. Default value is current directory'
     )
-   
+    
     parser.add_argument(
         '-od', '--output-directory',
         dest='output_directory',
@@ -52,7 +52,7 @@ def main():
         required=True,
         help='Input output directory'
     )
-   
+    
     parser.add_argument(
         '-e', '--exclude-folder',
         dest='exclude_folder',
@@ -60,14 +60,14 @@ def main():
         nargs='*',
         help='Exclude directories'
     )
-   
+    
     parser.add_argument(
         '--use-gitignore',
         dest='use_gitignore',
         action='store_true',
         help='(encode) Respect .gitignore rules in the executed directory'
     )
-   
+    
     parser.add_argument(
         '--max-size',
         dest='max_size',
@@ -75,7 +75,7 @@ def main():
         default=100,
         help='(encode) Maximum output part size in MB (default: 100)'
     )
-   
+    
     parser.add_argument(
         '--output-name',
         dest='output_name',
@@ -83,14 +83,14 @@ def main():
         default='combined',
         help='(encode) Base name for output part files (default: combined)'
     )
-   
+    
     parser.add_argument(
         '-v', '--verbose',
         dest='verbose',
         action='store_true',
         help='Enable verbose output'
     )
-   
+    
     args = parser.parse_args()
 
 
@@ -105,8 +105,12 @@ def main():
     verbose = args.verbose
 
 
+    if os.path.realpath(executed_dir) == os.path.realpath(output_dir):
+        parser.error('Source and output directories must not be the same.')
+
+
     info(verbose, f'Executing - {execution_mode} mode...')
-   
+    
     # Execute the appropriate mode
     if execution_mode == 'combine':
         execute_combine(
@@ -137,16 +141,3 @@ def main():
             output_dir=output_dir,
             verbose=verbose
         )
-    else:
-        parser.print_usage()
-
-
-
-
-if __name__ == '__main__':
-    main()
-
-
-
-
-

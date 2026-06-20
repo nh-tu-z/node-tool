@@ -53,14 +53,3 @@ htmlcov/
 .DS_Store
 Thumbs.db
 
-
-# Project specific
-*.log
-*.tmp
-temp/
-tmp/
-
-
-
-
-

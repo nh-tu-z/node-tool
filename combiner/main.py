@@ -14,10 +14,3 @@ For the new package-based installation, use:
 # Import the CLI main function from the combiner package
 from combiner.cli import main
 
-
-if __name__ == '__main__':
-    main()
-   
-
-
-

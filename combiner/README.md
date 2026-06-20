@@ -68,6 +68,12 @@ After installation, use the `combiner` command from anywhere in your terminal.
     ```
 
 
+    Encode a folder with `.gitignore` support and 10 MB output parts:
+    ```shell
+    combiner encode -ed "/x" -od "/x-output" --use-gitignore --max-size 10
+    ```
+
+
 - **Decode** (restore encoded files):
     ```shell
     combiner decode -ed "Encoded Folder" -od "Destination Folder" -v
@@ -81,7 +87,7 @@ After installation, use the `combiner` command from anywhere in your terminal.
     ```shell
     # Windows
     py -m venv .venv
-   
+    
     # Linux/Mac
     python3 -m venv .venv
     ```
@@ -91,10 +97,10 @@ After installation, use the `combiner` command from anywhere in your terminal.
     ```shell
     # Windows PowerShell
     .\.venv\Scripts\Activate.ps1
-   
+    
     # Windows Command Prompt
     .venv\Scripts\activate.bat
-   
+    
     # Linux/Mac
     source .venv/bin/activate
     ```
@@ -104,7 +110,7 @@ After installation, use the `combiner` command from anywhere in your terminal.
     ```shell
     pip install -e .
     ```
-   
+    
     This installs the package in "editable" mode, so changes to the source code are immediately reflected without reinstalling.
 
 
@@ -322,73 +328,3 @@ tests/
 ├── unit/                    # Fast, isolated unit tests
 │   ├── __init__.py
 │   └── test_core.py         # Tests for core.py functions
-└── integration/             # End-to-end integration tests
-    ├── __init__.py
-    ├── test_encode_decode.py    # Encode/decode workflow tests
-    ├── test_combine_spread.py   # Combine/spread workflow tests
-    ├── test_cli.py              # CLI interface tests
-    └── test_edge_cases.py       # Edge cases and error handling
-```
-
-
-#### What's Tested
-
-
-- ✅ **Core functions**: File reading, gitignore parsing, header generation
-- ✅ **Encode/decode**: Text files, binary files, gitignore support, multipart splits
-- ✅ **Combine/spread**: Legacy API, folder exclusions, multipart output
-- ✅ **CLI**: All commands, flags, error handling
-- ✅ **Edge cases**: Unicode, empty files, large files, nested directories, special characters
-
-
-#### Continuous Integration
-
-
-To run tests in CI/CD pipelines:
-
-
-```yaml
-# Example GitHub Actions workflow
-- name: Run tests with coverage
-  run: |
-    pip install -e ".[dev]"
-    pytest --cov=combiner --cov-report=xml --cov-report=term
-   
-- name: Upload coverage to Codecov
-  uses: codecov/codecov-action@v3
-  with:
-    file: ./coverage.xml
-```
-
-
-#### Coverage Goals
-
-
-- **Minimum**: 80% overall coverage
-- **Target**: 90%+ coverage for core functionality (`combiner/core.py`, `combiner/cli.py`)
-- **Focus**: Critical paths like encoding/decoding, file I/O, and CLI argument parsing
-
-
-### 6. Dev
-- Create a venv
-   ```shell
-    # Create a virtual environment
-    py -m venv {env-name}
-    ```
-- Go to venv and find activate script and activate the venv
-- Install all packages in requirements.txt
-    - Using pip:
-        ```shell
-        cd combiner
-        py -m pip install -r .\combiner\requirements.txt
-        ```
-    - Using uv (faster alternative):
-        ```shell
-        # Install uv if not already installed
-        pip install uv
-       
-        # Install requirements using uv
-        cd combiner
-        uv pip install -r .\combiner\requirements.txt
-        ```
-

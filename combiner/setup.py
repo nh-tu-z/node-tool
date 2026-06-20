@@ -52,12 +52,3 @@ setup(
     },
     keywords='file combiner spread encode decode utility',
     project_urls={
-        'Bug Reports': 'https://github.com/yourusername/combiner/issues',
-        'Source': 'https://github.com/yourusername/combiner',
-    },
-)
-
-
-
-
-

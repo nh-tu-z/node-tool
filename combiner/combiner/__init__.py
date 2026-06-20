@@ -25,12 +25,3 @@ from .core import (
 __all__ = [
     "__version__",
     "execute_combine",
-    "execute_spread",
-    "execute_encode",
-    "execute_decode",
-]
-
-
-
-
-

@@ -1,7 +1,2 @@
 pathspec>=0.12.1
 termcolor>=2.4.0
-
-
-
-
-

@@ -1,11 +1,3 @@
-
-
-
-
-
-
-
-
 """Shared pytest fixtures for all tests."""
 
 
@@ -45,12 +37,12 @@ def sample_text_files(temp_source_dir):
         "file2.py": "def hello():\n    print('Hello')\n",
         "subdir/file3.js": "console.log('test');\n",
     }
-   
+    
     for file_path, content in files.items():
         full_path = temp_source_dir / file_path
         full_path.parent.mkdir(parents=True, exist_ok=True)
         full_path.write_text(content, encoding='utf-8')
-   
+    
     return temp_source_dir, files
 
 
@@ -105,25 +97,25 @@ def create_test_files():
     def _create_files(base_dir, file_dict):
         """
         Create files in base_dir according to file_dict.
-       
+        
         Args:
             base_dir: Path object for the base directory
             file_dict: Dict mapping relative paths to content (str or bytes)
-       
+        
         Returns:
             base_dir Path object
         """
         for rel_path, content in file_dict.items():
             file_path = base_dir / rel_path
             file_path.parent.mkdir(parents=True, exist_ok=True)
-           
+            
             if isinstance(content, bytes):
                 file_path.write_bytes(content)
             else:
                 file_path.write_text(content, encoding='utf-8')
-       
+        
         return base_dir
-   
+    
     return _create_files
 
 
@@ -134,7 +126,7 @@ def encoded_files_dir(tmp_path, create_test_files):
     """Create a directory with encoded files for decode testing."""
     encoded_dir = tmp_path / "encoded"
     encoded_dir.mkdir()
-   
+    
     # Create a sample encoded file
     encoded_content = """#begin#test.txt#3#text#/begin#
 Line 1
@@ -145,33 +137,11 @@ Line 3
 iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==
 #end#binary.dat#/end#
 """
-   
+    
     encoded_file = encoded_dir / "combined_part001.txt"
     encoded_file.write_text(encoded_content, encoding='utf-8')
-   
+    
     return encoded_dir
 
 
 
-
-@pytest.fixture
-def large_file_content():
-    """Generate content for a large file (for testing max size limits)."""
-    # Generate ~2MB of text content
-    return "A" * (2 * 1024 * 1024)
-
-
-
-
-@pytest.fixture
-def mock_uuid(monkeypatch):
-    """Mock UUID generation for predictable output filenames."""
-    import uuid
-    counter = [0]
-   
-    def mock_uuid4():
-        counter[0] += 1
-        return f"test-uuid-{counter[0]:04d}"
-   
-    monkeypatch.setattr(uuid, 'uuid4', mock_uuid4)
-    return mock_uuid4
