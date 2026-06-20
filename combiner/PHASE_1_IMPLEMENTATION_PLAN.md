@@ -118,7 +118,7 @@ The `#42#` (line count) is kept for text files so existing `spread` behavior sti
 
 | # | Item | Priority | Notes |
 |---|------|----------|-------|
-| 1 | **SHA-256 integrity** | High | Add hash to header or manifest; verify on decode |
+| 1 | **SHA-256 integrity** ✅ | High | **Implemented.** Each encode header now carries a 64-char SHA-256 hex digest as a 5th field: `#begin#{path}#{lines}#{encoding}#{sha256}#/begin#`. The hash is computed on the *normalised* content (UTF-8 bytes for text files; raw bytes for binary files) so it is platform-independent. On decode, the same hash is recomputed from the written data and compared; a mismatch prints a coloured `[err]` line to stdout. Legacy files without a hash field decode silently without verification. |
 | 2 | **Compression option** | Medium | `--compress` flag: gzip the whole part then Base64-wrap it — smaller files but no longer human-readable |
 | 3 | **Nested `.gitignore`** | Medium | Merge specs from sub-directory `.gitignore` files as you descend |
 | 4 | **Skip binary files option** | Medium | `--skip-binary` flag: just omit binaries (common for AI paste use case) |

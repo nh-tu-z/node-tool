@@ -53,7 +53,7 @@ class TestEncodeBasic:
         assert len(output_files) >= 1
        
         content = output_files[0].read_text(encoding='utf-8')
-        assert '#begin#image.png#0#base64#/begin#' in content
+        assert '#begin#image.png#0#base64#' in content
         assert 'iVBORw0KGgo' in content  # Start of PNG base64
    
     def test_encode_empty_directory(self, temp_source_dir, temp_output_dir):
@@ -151,6 +151,55 @@ class TestEncodeWithGitignore:
         assert '#begin#__pycache__/cache.pyc#' not in content  # cache file should not be encoded
         assert '#begin#app.log#' not in content  # .log file should not be encoded
    
+    def test_encode_gitignore_directory_pattern_excludes_contents(self, temp_source_dir, temp_output_dir, create_test_files):
+        """Test that a directory pattern like __pycache__/ excludes ALL contents,
+        including non-.pyc files that wouldn't be caught by a glob pattern."""
+        gitignore = temp_source_dir / ".gitignore"
+        gitignore.write_text("__pycache__/\nbuild/\n", encoding='utf-8')
+
+
+        files = {
+            "main.py": "print('main')\n",
+            "__pycache__/main.cpython-311.pyc": "bytecode",
+            "__pycache__/extra.data": "some cache data",   # not matched by *.pyc
+            "src/__pycache__/utils.cpython-311.pyc": "nested bytecode",
+            "build/lib/output.py": "built file\n",
+            "readme.txt": "readme\n",
+        }
+        create_test_files(temp_source_dir, files)
+
+
+        execute_encode(
+            executed_dir=str(temp_source_dir),
+            output_dir=str(temp_output_dir),
+            output_name='dir_pattern_test',
+            use_gitignore=True,
+            verbose=False
+        )
+
+
+        output_files = list(temp_output_dir.glob('dir_pattern_test_part*.txt'))
+        assert len(output_files) >= 1
+
+
+        content = output_files[0].read_text(encoding='utf-8')
+
+
+        # Included files
+        assert '#begin#main.py#' in content
+        assert '#begin#readme.txt#' in content
+
+
+        # Excluded by __pycache__/ directory pattern
+        assert '#begin#__pycache__/main.cpython-311.pyc#' not in content
+        assert '#begin#__pycache__/extra.data#' not in content
+        assert '#begin#src/__pycache__/utils.cpython-311.pyc#' not in content
+
+
+        # Excluded by build/ directory pattern
+        assert '#begin#build/lib/output.py#' not in content
+
+
     def test_encode_without_gitignore_includes_all(self, temp_source_dir, temp_output_dir, create_test_files):
         """Test that without gitignore flag, all files are included."""
         gitignore = temp_source_dir / ".gitignore"

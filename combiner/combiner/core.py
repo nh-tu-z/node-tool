@@ -2,6 +2,7 @@
 
 
 import base64
+import hashlib
 import os
 import uuid
 from os.path import join, relpath, getsize
@@ -71,9 +72,16 @@ def is_excluded(file_path: str, source_dir: str, gitignore_spec, exclude_folders
     # Check manual folder exclusions against every path segment except the filename
     if any(part in exclude_folders for part in parts[:-1]):
         return True
-    # Check gitignore spec
-    if gitignore_spec is not None and gitignore_spec.match_file(rel):
-        return True
+    # Check gitignore spec — check the file itself and every ancestor directory
+    if gitignore_spec is not None:
+        if gitignore_spec.match_file(rel):
+            return True
+        # Also check parent directories for directory patterns like __pycache__/
+        parts_without_file = parts[:-1]
+        for i in range(1, len(parts_without_file) + 1):
+            parent = '/'.join(parts_without_file[:i]) + '/'
+            if gitignore_spec.match_file(parent):
+                return True
     return False
 
 
@@ -92,6 +100,23 @@ def read_file_content(file_path: str) -> tuple:
     except UnicodeDecodeError:
         with open(file_path, 'rb') as f:
             return base64.b64encode(f.read()).decode('ascii'), 'base64'
+
+
+
+
+def _sha256_of_content(content: str, encoding_tag: str) -> str:
+    """SHA-256 hex digest of the logical content used for encode/decode verification.
+
+
+    For text files: hashes the UTF-8 bytes of the normalised content string.
+    For base64 files: hashes the original raw binary bytes.
+    This matches what execute_decode reconstructs, so the hash is platform-independent.
+    """
+    if encoding_tag == 'base64':
+        raw = base64.b64decode(content)
+    else:
+        raw = content.encode('utf-8')
+    return hashlib.sha256(raw).hexdigest()
 
 
 
@@ -135,6 +160,14 @@ def execute_encode(executed_dir: str, output_dir: str, output_name: str = 'combi
         for root, dirs, files in os.walk(executed_dir):
             # Prune excluded directories so os.walk never descends into them
             dirs[:] = [d for d in dirs if d not in exclude_set]
+            # Prune directories matching gitignore patterns (e.g. __pycache__/, build/)
+            if gitignore_spec is not None:
+                dirs[:] = [
+                    d for d in dirs
+                    if not gitignore_spec.match_file(
+                        relpath(join(root, d), executed_dir).replace('\\', '/') + '/'
+                    )
+                ]
 
 
             for filename in files:
@@ -163,7 +196,8 @@ def execute_encode(executed_dir: str, output_dir: str, output_name: str = 'combi
                         num_lines = 0
 
 
-                    header = f'#begin#{rel_path}#{num_lines}#{encoding}#/begin#\n'
+                    sha256 = _sha256_of_content(content, encoding)
+                    header = f'#begin#{rel_path}#{num_lines}#{encoding}#{sha256}#/begin#\n'
                     footer = f'#end#{rel_path}#/end#\n'
                     # Ensure body ends with newline so footer sits on its own line
                     body = content if (not content or content.endswith('\n')) else content + '\n'
@@ -199,16 +233,22 @@ def execute_encode(executed_dir: str, output_dir: str, output_name: str = 'combi
 
 
 def _parse_encode_header(line: str):
-    """Parse a #begin# header line. Returns (rel_path, num_lines, encoding) or None."""
+    """Parse a #begin# header line. Returns (rel_path, num_lines, encoding, sha256) or None.
+
+
+    sha256 is None for legacy files encoded before the integrity-hash feature.
+    """
     stripped = line.rstrip('\n')
     if not stripped.startswith('#begin#') or not stripped.endswith('#/begin#'):
         return None
     payload = stripped[len('#begin#'):-len('#/begin#')]
     parts = payload.split('#')
+    if len(parts) == 4:
+        return parts[0], int(parts[1]), parts[2], parts[3]
     if len(parts) == 3:
-        return parts[0], int(parts[1]), parts[2]
+        return parts[0], int(parts[1]), parts[2], None
     if len(parts) == 2:
-        return parts[0], int(parts[1]), 'text'  # legacy combine format
+        return parts[0], int(parts[1]), 'text', None  # legacy combine format
     return None
 
 
@@ -243,7 +283,7 @@ def execute_decode(executed_dir: str, output_dir: str, verbose: bool = False):
                     continue
 
 
-                rel_path, num_lines, encoding = header
+                rel_path, num_lines, encoding, stored_sha256 = header
                 # Normalise separators from the stored header
                 rel_path = rel_path.replace('/', os.sep)
                 out_path = join(output_dir, rel_path)
@@ -252,17 +292,30 @@ def execute_decode(executed_dir: str, output_dir: str, verbose: bool = False):
                     os.makedirs(parent_dir, exist_ok=True)
 
 
+                actual_sha256 = None
                 if encoding == 'base64':
                     b64_line = f.readline().rstrip('\n')
+                    decoded_bytes = base64.b64decode(b64_line)
                     with open(out_path, 'wb') as out:
-                        out.write(base64.b64decode(b64_line))
+                        out.write(decoded_bytes)
+                    if stored_sha256 is not None:
+                        actual_sha256 = hashlib.sha256(decoded_bytes).hexdigest()
                 else:
                     content_lines = [f.readline() for _ in range(num_lines)]
                     with open(out_path, 'w', encoding='utf-8', newline='') as out:
                         out.writelines(content_lines)
+                    if stored_sha256 is not None:
+                        actual_sha256 = hashlib.sha256(''.join(content_lines).encode('utf-8')).hexdigest()
 
 
                 info(verbose, f'Decoded: {rel_path}')
+                if stored_sha256 is not None:
+                    if actual_sha256 == stored_sha256:
+                        info(verbose, f'SHA-256 OK: {rel_path}')
+                    else:
+                        print(colored('[err] ', 'red'), f'SHA-256 MISMATCH for {rel_path}')
+                        print('  stored: ', stored_sha256)
+                        print('  actual: ', actual_sha256)
                 line = f.readline()
 
 
