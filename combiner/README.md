@@ -68,6 +68,12 @@ After installation, use the `combiner` command from anywhere in your terminal.
     ```
 
 
+    Encode a folder with `.gitignore` support and 10 MB output parts:
+    ```shell
+    combiner encode -ed "/x" -od "/x-output" --use-gitignore --max-size 10
+    ```
+
+
 - **Decode** (restore encoded files):
     ```shell
     combiner decode -ed "Encoded Folder" -od "Destination Folder" -v
@@ -391,4 +397,6 @@ To run tests in CI/CD pipelines:
         cd combiner
         uv pip install -r .\combiner\requirements.txt
         ```
+
+
 
