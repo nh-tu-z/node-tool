@@ -136,7 +136,8 @@ def _open_encode_part(output_dir: str, output_name: str, part_index: int):
 
 def execute_encode(executed_dir: str, output_dir: str, output_name: str = 'combined',
                    use_gitignore: bool = False, exclude_folders: 'list[str]' = None,
-                   max_size_bytes: int = DEFAULT_ENCODE_MAX_SIZE, verbose: bool = False):
+                   max_size_bytes: int = DEFAULT_ENCODE_MAX_SIZE, verbose: bool = False,
+                   dry_run: bool = False):
     """Encode files from a directory into one or more output files.
    
     Args:
@@ -147,15 +148,25 @@ def execute_encode(executed_dir: str, output_dir: str, output_name: str = 'combi
         exclude_folders: List of folder names to exclude
         max_size_bytes: Maximum size per output file
         verbose: Whether to print verbose output
+        dry_run: If True, print what would be done without writing any files
     """
-    os.makedirs(output_dir, exist_ok=True)
     exclude_set = set(exclude_folders) if exclude_folders else set()
     gitignore_spec = load_gitignore_spec(executed_dir, use_gitignore)
     real_output_dir = os.path.realpath(output_dir)
 
 
     part_index = 1
-    out_path, out_file = _open_encode_part(output_dir, output_name, part_index)
+    if dry_run:
+        virtual_size = 0
+        total_files = 0
+        total_bytes = 0
+        _dryrun(f'source: {executed_dir}')
+        _dryrun(f'would write to: {output_dir}')
+    else:
+        os.makedirs(output_dir, exist_ok=True)
+        out_path, out_file = _open_encode_part(output_dir, output_name, part_index)
+
+
     try:
         for root, dirs, files in os.walk(executed_dir):
             # Prune excluded directories so os.walk never descends into them
@@ -181,7 +192,10 @@ def execute_encode(executed_dir: str, output_dir: str, output_name: str = 'combi
 
 
                 if is_excluded(file_path, executed_dir, gitignore_spec, exclude_set):
-                    info(verbose, f'Excluded: {relpath(file_path, executed_dir)}')
+                    if dry_run:
+                        _dryrun(f'excluded: {relpath(file_path, executed_dir)}')
+                    else:
+                        info(verbose, f'Excluded: {relpath(file_path, executed_dir)}')
                     continue
 
 
@@ -203,31 +217,54 @@ def execute_encode(executed_dir: str, output_dir: str, output_name: str = 'combi
                     body = content if (not content or content.endswith('\n')) else content + '\n'
 
 
-                    out_file.write(header)
-                    out_file.write(body)
-                    out_file.write(footer)
-                    out_file.flush()
-                    info(verbose, f'Encoded ({encoding}): {rel_path}')
+                    if dry_run:
+                        block_size = len(header.encode('utf-8')) + len(body.encode('utf-8')) + len(footer.encode('utf-8'))
+                        part_name = _encode_part_filename(output_name, part_index)
+                        _dryrun(f'would encode ({encoding}): {rel_path}  -> {part_name}')
+                        old_virtual_size = virtual_size
+                        virtual_size += block_size
+                        total_files += 1
+                        total_bytes += block_size
+                        if virtual_size > max_size_bytes:
+                            if old_virtual_size == 0:
+                                print(colored('[err] ', 'red'), f'Warning: single file exceeds --max-size limit: {rel_path}')
+                            part_index += 1
+                            virtual_size = 0
+                    else:
+                        out_file.write(header)
+                        out_file.write(body)
+                        out_file.write(footer)
+                        out_file.flush()
+                        info(verbose, f'Encoded ({encoding}): {rel_path}')
 
 
-                    if getsize(out_path) > max_size_bytes:
-                        if getsize(out_path) - len(header) - len(body) - len(footer) == 0:
-                            # This single file exceeds the limit — warn but keep it
-                            error(verbose, f'Warning: single file exceeds --max-size limit: {rel_path}')
-                        out_file.close()
-                        part_index += 1
-                        out_path, out_file = _open_encode_part(output_dir, output_name, part_index)
+                        if getsize(out_path) > max_size_bytes:
+                            if getsize(out_path) - len(header) - len(body) - len(footer) == 0:
+                                # This single file exceeds the limit — warn but keep it
+                                error(verbose, f'Warning: single file exceeds --max-size limit: {rel_path}')
+                            out_file.close()
+                            part_index += 1
+                            out_path, out_file = _open_encode_part(output_dir, output_name, part_index)
 
 
                 except Exception as ex:
-                    error(verbose, f'Failed to encode {file_path}: {ex}')
+                    if dry_run:
+                        print(colored('[err] ', 'red'), f'Failed to read {file_path}: {ex}')
+                    else:
+                        error(verbose, f'Failed to encode {file_path}: {ex}')
     finally:
-        out_file.close()
+        if not dry_run:
+            out_file.close()
+            # Remove the last part if it was opened but nothing was written into it
+            if os.path.exists(out_path) and getsize(out_path) == 0:
+                os.remove(out_path)
 
 
-    # Remove the last part if it was opened but nothing was written into it
-    if os.path.exists(out_path) and getsize(out_path) == 0:
-        os.remove(out_path)
+    if dry_run:
+        total_mb = total_bytes / (1024 * 1024)
+        # If the last rollover left an empty pending part, don't count it
+        effective_parts = part_index - 1 if virtual_size == 0 and part_index > 1 else part_index
+        _dryrun(f'{total_files} file(s) would be encoded -> {effective_parts} part(s)  (~{total_mb:.1f} MB total)')
 
 
 
@@ -254,15 +291,18 @@ def _parse_encode_header(line: str):
 
 
 
-def execute_decode(executed_dir: str, output_dir: str, verbose: bool = False):
+def execute_decode(executed_dir: str, output_dir: str, verbose: bool = False,
+                   dry_run: bool = False):
     """Decode files from encoded format back to original files.
    
     Args:
         executed_dir: Directory containing encoded .txt files
         output_dir: Directory to write decoded files
         verbose: Whether to print verbose output
+        dry_run: If True, print what would be done without writing any files
     """
-    os.makedirs(output_dir, exist_ok=True)
+    if not dry_run:
+        os.makedirs(output_dir, exist_ok=True)
 
 
     txt_files = []
@@ -273,6 +313,12 @@ def execute_decode(executed_dir: str, output_dir: str, verbose: bool = False):
     txt_files.sort()
 
 
+    if dry_run:
+        _dryrun(f'source: {executed_dir}')
+        _dryrun(f'would write to: {output_dir}')
+
+
+    total_files = 0
     for file_path in txt_files:
         with open(file_path, 'r', encoding='utf-8') as f:
             line = f.readline()
@@ -288,35 +334,58 @@ def execute_decode(executed_dir: str, output_dir: str, verbose: bool = False):
                 rel_path = rel_path.replace('/', os.sep)
                 out_path = join(output_dir, rel_path)
                 parent_dir = os.path.dirname(out_path)
-                if parent_dir:
-                    os.makedirs(parent_dir, exist_ok=True)
 
 
                 actual_sha256 = None
                 if encoding == 'base64':
                     b64_line = f.readline().rstrip('\n')
                     decoded_bytes = base64.b64decode(b64_line)
-                    with open(out_path, 'wb') as out:
-                        out.write(decoded_bytes)
+                    if dry_run:
+                        size_kb = len(decoded_bytes) / 1024
+                        _dryrun(f'would decode: {rel_path}  (base64, {size_kb:.1f} KB)')
+                    else:
+                        if parent_dir:
+                            os.makedirs(parent_dir, exist_ok=True)
+                        with open(out_path, 'wb') as out:
+                            out.write(decoded_bytes)
                     if stored_sha256 is not None:
                         actual_sha256 = hashlib.sha256(decoded_bytes).hexdigest()
                 else:
                     content_lines = [f.readline() for _ in range(num_lines)]
-                    with open(out_path, 'w', encoding='utf-8', newline='') as out:
-                        out.writelines(content_lines)
+                    if dry_run:
+                        _dryrun(f'would decode: {rel_path}  (text, {num_lines} lines)')
+                    else:
+                        if parent_dir:
+                            os.makedirs(parent_dir, exist_ok=True)
+                        with open(out_path, 'w', encoding='utf-8', newline='') as out:
+                            out.writelines(content_lines)
                     if stored_sha256 is not None:
                         actual_sha256 = hashlib.sha256(''.join(content_lines).encode('utf-8')).hexdigest()
 
 
-                info(verbose, f'Decoded: {rel_path}')
-                if stored_sha256 is not None:
-                    if actual_sha256 == stored_sha256:
-                        info(verbose, f'SHA-256 OK: {rel_path}')
-                    else:
-                        print(colored('[err] ', 'red'), f'SHA-256 MISMATCH for {rel_path}')
-                        print('  stored: ', stored_sha256)
-                        print('  actual: ', actual_sha256)
+                total_files += 1
+                if dry_run:
+                    if stored_sha256 is not None:
+                        if actual_sha256 == stored_sha256:
+                            _dryrun(f'SHA-256 OK: {rel_path}')
+                        else:
+                            print(colored('[err] ', 'red'), f'SHA-256 MISMATCH for {rel_path}')
+                            print('  stored: ', stored_sha256)
+                            print('  actual: ', actual_sha256)
+                else:
+                    info(verbose, f'Decoded: {rel_path}')
+                    if stored_sha256 is not None:
+                        if actual_sha256 == stored_sha256:
+                            info(verbose, f'SHA-256 OK: {rel_path}')
+                        else:
+                            print(colored('[err] ', 'red'), f'SHA-256 MISMATCH for {rel_path}')
+                            print('  stored: ', stored_sha256)
+                            print('  actual: ', actual_sha256)
                 line = f.readline()
+
+
+    if dry_run:
+        _dryrun(f'{total_files} file(s) would be decoded from {len(txt_files)} part(s)')
 
 
 
@@ -437,6 +506,12 @@ def error(verbose: bool, *args):
         text = colored('[err] ', 'red')
         print(text, *args)
 
+
+
+
+def _dryrun(*args):
+    """Print a dry-run message (always shown)."""
+    print(colored('[dry-run]', 'cyan'), *args)
 
 
 
