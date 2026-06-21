@@ -85,6 +85,14 @@ def main():
     )
    
     parser.add_argument(
+        '--dry-run',
+        dest='dry_run',
+        action='store_true',
+        help='(encode/decode) Print what would be done without writing any files'
+    )
+
+
+    parser.add_argument(
         '-v', '--verbose',
         dest='verbose',
         action='store_true',
@@ -102,7 +110,12 @@ def main():
     use_gitignore = args.use_gitignore
     max_size_bytes = args.max_size * 1024 * 1024
     output_name = args.output_name
+    dry_run = args.dry_run
     verbose = args.verbose
+
+
+    if os.path.realpath(executed_dir) == os.path.realpath(output_dir):
+        parser.error('Source and output directories must not be the same.')
 
 
     info(verbose, f'Executing - {execution_mode} mode...')
@@ -129,13 +142,15 @@ def main():
             use_gitignore=use_gitignore,
             exclude_folders=exclude_folders,
             max_size_bytes=max_size_bytes,
-            verbose=verbose
+            verbose=verbose,
+            dry_run=dry_run
         )
     elif execution_mode == 'decode':
         execute_decode(
             executed_dir=executed_dir,
             output_dir=output_dir,
-            verbose=verbose
+            verbose=verbose,
+            dry_run=dry_run
         )
     else:
         parser.print_usage()
@@ -145,7 +160,6 @@ def main():
 
 if __name__ == '__main__':
     main()
-
 
 
 
